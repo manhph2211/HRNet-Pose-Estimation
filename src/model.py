@@ -6,12 +6,13 @@ import torch.nn as nn
 BN_MOMENTUM = 0.1
 logger = logging.getLogger(__name__)
 
+
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
 
-
+1
 class BasicBlock(nn.Module):
     expansion = 1
 
@@ -64,15 +65,12 @@ class Bottleneck(nn.Module):
 
     def forward(self, x):
         residual = x
-
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-
         out = self.conv2(out)
         out = self.bn2(out)
         out = self.relu(out)
-
         out = self.conv3(out)
         out = self.bn3(out)
 
