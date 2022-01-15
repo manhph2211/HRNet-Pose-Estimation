@@ -285,7 +285,6 @@ class JointsDataset(Dataset):
         return target, target_weight
 
 
-
 class COCODataset(JointsDataset):
     '''
     "keypoints": {
