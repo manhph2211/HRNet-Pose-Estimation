@@ -45,13 +45,13 @@ def format(annotation_file="./annotations/in_images.json",image_folder="./images
                     val_dict['images'].append(image)
                     val_dict['annotations'].append(anno)
                     copyfile(os.path.join(image_folder,file_name),os.path.join('./images/val2017',file_name))
+                    for person_detection_result in person_detection_results:
+                        if person_detection_result['image_id'] == id_image:
+                            new_person_detection_results.append(person_detection_result)
                 else:
                     train_dict['images'].append(image)
                     train_dict['annotations'].append(anno)
                     copyfile(os.path.join(image_folder,file_name),os.path.join('./images/train2017',file_name))
-                    for person_detection_result in person_detection_results:
-                        if person_detection_result['image_id'] == id_image:
-                            new_person_detection_results.append(person_detection_result)
                 break # NOT SURE
     write_json('./annotations/person_keypoints_train2017.json',train_dict)
     write_json('./annotations/person_keypoints_val2017.json', val_dict)
