@@ -82,11 +82,11 @@ def main():
     )
 
     for epoch in range(begin_epoch, cfg.TRAIN.END_EPOCH):
-        lr_scheduler.step()
+
 
         # train for one epoch
-        train(cfg, train_loader, model, criterion, optimizer, epoch)
-        perf_indicator = validate(cfg, valid_loader, valid_dataset, model, criterion, output_dir='./weights')
+        train(cfg, train_loader, model, criterion, optimizer,device='cpu', epoch=epoch)
+        perf_indicator = validate(cfg, valid_loader, valid_dataset, model, criterion, output_dir='./weights', device=device)
 
         if perf_indicator >= best_perf:
             best_perf = perf_indicator
@@ -102,6 +102,7 @@ def main():
             'perf': perf_indicator,
             'optimizer': optimizer.state_dict(),
         }, best_model, './weights')
+        lr_scheduler.step()
 
     final_model_state_file = './weights/final_ckp.pth'
     torch.save(model.module.state_dict(), final_model_state_file)
@@ -109,4 +110,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

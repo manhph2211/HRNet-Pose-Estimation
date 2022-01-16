@@ -11,7 +11,7 @@ from transforms import flip_back
 logger = logging.getLogger(__name__)
 
 
-def train(config, train_loader, model, criterion, optimizer, epoch, device, writer_dict=None):
+def train(config, train_loader, model, criterion, optimizer, epoch, device='cpu', writer_dict=None):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -74,7 +74,7 @@ def train(config, train_loader, model, criterion, optimizer, epoch, device, writ
             #                   prefix)
 
 
-def validate(config, val_loader, val_dataset, model, criterion, output_dir, device, writer_dict=None):
+def validate(config, val_loader, val_dataset, model, criterion, output_dir, device='cpu', writer_dict=None):
     batch_time = AverageMeter()
     losses = AverageMeter()
     acc = AverageMeter()
