@@ -8,9 +8,9 @@ import cv2
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from utils import get_affine_transform
-from utils import affine_transform
-from utils import fliplr_joints
+from transforms import get_affine_transform
+from transforms import affine_transform
+from transforms import fliplr_joints
 from collections import defaultdict
 from collections import OrderedDict
 import os

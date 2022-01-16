@@ -4,7 +4,6 @@ from __future__ import print_function
 
 import time
 import logging
-import os
 import numpy as np
 import torch
 from evaluate import accuracy, get_final_preds
@@ -12,27 +11,21 @@ from transforms import flip_back
 logger = logging.getLogger(__name__)
 
 
-def train(config, train_loader, model, criterion, optimizer, epoch,
-          output_dir, tb_log_dir, writer_dict):
+def train(config, train_loader, model, criterion, optimizer, epoch, device, writer_dict=None):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
     acc = AverageMeter()
-
-    # switch to train mode
     model.train()
-
     end = time.time()
+
     for i, (input, target, target_weight, meta) in enumerate(train_loader):
-        # measure data loading time
         data_time.update(time.time() - end)
-
         # compute output
+        input = input.to(device)
+        target = target.to(device)
+        target_weight = target_weight.to(device)
         outputs = model(input)
-
-        target = target.cuda(non_blocking=True)
-        target_weight = target_weight.cuda(non_blocking=True)
-
         if isinstance(outputs, list):
             loss = criterion(outputs[0], target, target_weight)
             for output in outputs[1:]:
@@ -50,7 +43,6 @@ def train(config, train_loader, model, criterion, optimizer, epoch,
 
         # measure accuracy and record loss
         losses.update(loss.item(), input.size(0))
-
         _, avg_acc, cnt, pred = accuracy(output.detach().cpu().numpy(),
                                          target.detach().cpu().numpy())
         acc.update(avg_acc, cnt)
@@ -66,9 +58,9 @@ def train(config, train_loader, model, criterion, optimizer, epoch,
                   'Data {data_time.val:.3f}s ({data_time.avg:.3f}s)\t' \
                   'Loss {loss.val:.5f} ({loss.avg:.5f})\t' \
                   'Accuracy {acc.val:.3f} ({acc.avg:.3f})'.format(
-                epoch, i, len(train_loader), batch_time=batch_time,
-                speed=input.size(0) / batch_time.val,
-                data_time=data_time, loss=losses, acc=acc)
+                      epoch, i, len(train_loader), batch_time=batch_time,
+                      speed=input.size(0)/batch_time.val,
+                      data_time=data_time, loss=losses, acc=acc)
             logger.info(msg)
 
             writer = writer_dict['writer']
@@ -78,12 +70,11 @@ def train(config, train_loader, model, criterion, optimizer, epoch,
             writer_dict['train_global_steps'] = global_steps + 1
 
             # prefix = '{}_{}'.format(os.path.join(output_dir, 'train'), i)
-            # save_debug_images(config, input, meta, target, pred * 4, output,
+            # save_debug_images(config, input, meta, target, pred*4, output,
             #                   prefix)
 
 
-def validate(config, val_loader, val_dataset, model, criterion, output_dir,
-             tb_log_dir, writer_dict=None):
+def validate(config, val_loader, val_dataset, model, criterion, output_dir, device, writer_dict=None):
     batch_time = AverageMeter()
     losses = AverageMeter()
     acc = AverageMeter()
@@ -105,6 +96,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
         end = time.time()
         for i, (input, target, target_weight, meta) in enumerate(val_loader):
             # compute output
+            input = input.to(device)
             outputs = model(input)
             if isinstance(outputs, list):
                 output = outputs[-1]
@@ -115,7 +107,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
                 # this part is ugly, because pytorch has not supported negative index
                 # input_flipped = model(input[:, :, :, ::-1])
                 input_flipped = np.flip(input.cpu().numpy(), 3).copy()
-                input_flipped = torch.from_numpy(input_flipped).cuda()
+                input_flipped = torch.from_numpy(input_flipped).to(device)
                 outputs_flipped = model(input_flipped)
 
                 if isinstance(outputs_flipped, list):
@@ -125,8 +117,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
 
                 output_flipped = flip_back(output_flipped.cpu().numpy(),
                                            val_dataset.flip_pairs)
-                output_flipped = torch.from_numpy(output_flipped.copy()).cuda()
-
+                output_flipped = torch.from_numpy(output_flipped.copy()).to(device)
                 # feature is not aligned, shift flipped heatmap for higher accuracy
                 if config.TEST.SHIFT_HEATMAP:
                     output_flipped[:, :, :, 1:] = \
@@ -134,8 +125,8 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
 
                 output = (output + output_flipped) * 0.5
 
-            target = target.cuda(non_blocking=True)
-            target_weight = target_weight.cuda(non_blocking=True)
+            target = target.to(device)
+            target_weight = target_weight.to(device)
 
             loss = criterion(output, target, target_weight)
 
@@ -163,7 +154,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
             # double check this all_boxes parts
             all_boxes[idx:idx + num_images, 0:2] = c[:, 0:2]
             all_boxes[idx:idx + num_images, 2:4] = s[:, 0:2]
-            all_boxes[idx:idx + num_images, 4] = np.prod(s * 200, 1)
+            all_boxes[idx:idx + num_images, 4] = np.prod(s*200, 1)
             all_boxes[idx:idx + num_images, 5] = score
             image_path.extend(meta['image'])
 
@@ -174,16 +165,9 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
                       'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t' \
                       'Loss {loss.val:.4f} ({loss.avg:.4f})\t' \
                       'Accuracy {acc.val:.3f} ({acc.avg:.3f})'.format(
-                    i, len(val_loader), batch_time=batch_time,
-                    loss=losses, acc=acc)
+                          i, len(val_loader), batch_time=batch_time,
+                          loss=losses, acc=acc)
                 logger.info(msg)
-
-                prefix = '{}_{}'.format(
-                    os.path.join(output_dir, 'val'), i
-                )
-                save_debug_images(config, input, meta, target, pred * 4, output,
-                                  prefix)
-
         name_values, perf_indicator = val_dataset.evaluate(
             config, all_preds, output_dir, all_boxes, image_path,
             filenames, imgnums
@@ -237,20 +221,19 @@ def _print_name_value(name_value, full_arch_name):
         ' '.join(['| {}'.format(name) for name in names]) +
         ' |'
     )
-    logger.info('|---' * (num_values + 1) + '|')
+    logger.info('|---' * (num_values+1) + '|')
 
     if len(full_arch_name) > 15:
         full_arch_name = full_arch_name[:8] + '...'
     logger.info(
         '| ' + full_arch_name + ' ' +
         ' '.join(['| {:.3f}'.format(value) for value in values]) +
-        ' |'
+         ' |'
     )
 
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
-
     def __init__(self):
         self.reset()
 
