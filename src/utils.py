@@ -1,75 +1,199 @@
-import numpy as np
-import cv2
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import os
+import logging
+import time
+from collections import namedtuple
+from pathlib import Path
+import torch
+import torch.optim as optim
+import torch.nn as nn
 
 
-def get_dir(src_point, rot_rad):
-    sn, cs = np.sin(rot_rad), np.cos(rot_rad)
+def create_logger(cfg, cfg_name, phase='train'):
+    root_output_dir = Path(cfg.OUTPUT_DIR)
+    # set up logger
+    if not root_output_dir.exists():
+        print('=> creating {}'.format(root_output_dir))
+        root_output_dir.mkdir()
 
-    src_result = [0, 0]
-    src_result[0] = src_point[0] * cs - src_point[1] * sn
-    src_result[1] = src_point[0] * sn + src_point[1] * cs
+    dataset = cfg.DATASET.DATASET + '_' + cfg.DATASET.HYBRID_JOINTS_TYPE \
+        if cfg.DATASET.HYBRID_JOINTS_TYPE else cfg.DATASET.DATASET
+    dataset = dataset.replace(':', '_')
+    model = cfg.MODEL.NAME
+    cfg_name = os.path.basename(cfg_name).split('.')[0]
 
-    return src_result
+    final_output_dir = root_output_dir / dataset / model / cfg_name
 
+    print('=> creating {}'.format(final_output_dir))
+    final_output_dir.mkdir(parents=True, exist_ok=True)
 
-def get_3rd_point(a, b):
-    direct = a - b
-    return b + np.array([-direct[1], direct[0]], dtype=np.float32)
+    time_str = time.strftime('%Y-%m-%d-%H-%M')
+    log_file = '{}_{}_{}.log'.format(cfg_name, time_str, phase)
+    final_log_file = final_output_dir / log_file
+    head = '%(asctime)-15s %(message)s'
+    logging.basicConfig(filename=str(final_log_file),
+                        format=head)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    console = logging.StreamHandler()
+    logging.getLogger('').addHandler(console)
 
+    tensorboard_log_dir = Path(cfg.LOG_DIR) / dataset / model / \
+        (cfg_name + '_' + time_str)
 
-def get_affine_transform(
-        center, scale, rot, output_size,
-        shift=np.array([0, 0], dtype=np.float32), inv=0
-):
-    if not isinstance(scale, np.ndarray) and not isinstance(scale, list):
-        print(scale)
-        scale = np.array([scale, scale])
+    print('=> creating {}'.format(tensorboard_log_dir))
+    tensorboard_log_dir.mkdir(parents=True, exist_ok=True)
 
-    scale_tmp = scale * 200.0
-    src_w = scale_tmp[0]
-    dst_w = output_size[0]
-    dst_h = output_size[1]
-
-    rot_rad = np.pi * rot / 180
-    src_dir = get_dir([0, src_w * -0.5], rot_rad)
-    dst_dir = np.array([0, dst_w * -0.5], np.float32)
-
-    src = np.zeros((3, 2), dtype=np.float32)
-    dst = np.zeros((3, 2), dtype=np.float32)
-    src[0, :] = center + scale_tmp * shift
-    src[1, :] = center + src_dir + scale_tmp * shift
-    dst[0, :] = [dst_w * 0.5, dst_h * 0.5]
-    dst[1, :] = np.array([dst_w * 0.5, dst_h * 0.5]) + dst_dir
-
-    src[2:, :] = get_3rd_point(src[0, :], src[1, :])
-    dst[2:, :] = get_3rd_point(dst[0, :], dst[1, :])
-
-    if inv:
-        trans = cv2.getAffineTransform(np.float32(dst), np.float32(src))
-    else:
-        trans = cv2.getAffineTransform(np.float32(src), np.float32(dst))
-
-    return trans
+    return logger, str(final_output_dir), str(tensorboard_log_dir)
 
 
-def affine_transform(pt, t):
-    new_pt = np.array([pt[0], pt[1], 1.]).T
-    new_pt = np.dot(t, new_pt)
-    return new_pt[:2]
+def get_optimizer(cfg, model):
+    optimizer = None
+    if cfg.TRAIN.OPTIMIZER == 'sgd':
+        optimizer = optim.SGD(
+            model.parameters(),
+            lr=cfg.TRAIN.LR,
+            momentum=cfg.TRAIN.MOMENTUM,
+            weight_decay=cfg.TRAIN.WD,
+            nesterov=cfg.TRAIN.NESTEROV
+        )
+    elif cfg.TRAIN.OPTIMIZER == 'adam':
+        optimizer = optim.Adam(
+            model.parameters(),
+            lr=cfg.TRAIN.LR
+        )
+
+    return optimizer
 
 
-def fliplr_joints(joints, joints_vis, width, matched_parts):
+def save_checkpoint(states, is_best, output_dir,
+                    filename='checkpoint.pth'):
+    torch.save(states, os.path.join(output_dir, filename))
+    if is_best and 'state_dict' in states:
+        torch.save(states['best_state_dict'],
+                   os.path.join(output_dir, 'model_best.pth'))
+
+
+def get_model_summary(model, *input_tensors, item_length=26, verbose=False):
     """
-    flip coords
+    :param model:
+    :param input_tensors:
+    :param item_length:
+    :return:
     """
-    # Flip horizontal
-    joints[:, 0] = width - joints[:, 0] - 1
 
-    # Change left-right parts
-    for pair in matched_parts:
-        joints[pair[0], :], joints[pair[1], :] = \
-            joints[pair[1], :], joints[pair[0], :].copy()
-        joints_vis[pair[0], :], joints_vis[pair[1], :] = \
-            joints_vis[pair[1], :], joints_vis[pair[0], :].copy()
+    summary = []
 
-    return joints*joints_vis, joints_vis
+    ModuleDetails = namedtuple(
+        "Layer", ["name", "input_size", "output_size", "num_parameters", "multiply_adds"])
+    hooks = []
+    layer_instances = {}
+
+    def add_hooks(module):
+
+        def hook(module, input, output):
+            class_name = str(module.__class__.__name__)
+
+            instance_index = 1
+            if class_name not in layer_instances:
+                layer_instances[class_name] = instance_index
+            else:
+                instance_index = layer_instances[class_name] + 1
+                layer_instances[class_name] = instance_index
+
+            layer_name = class_name + "_" + str(instance_index)
+
+            params = 0
+
+            if class_name.find("Conv") != -1 or class_name.find("BatchNorm") != -1 or \
+               class_name.find("Linear") != -1:
+                for param_ in module.parameters():
+                    params += param_.view(-1).size(0)
+
+            flops = "Not Available"
+            if class_name.find("Conv") != -1 and hasattr(module, "weight"):
+                flops = (
+                    torch.prod(
+                        torch.LongTensor(list(module.weight.data.size()))) *
+                    torch.prod(
+                        torch.LongTensor(list(output.size())[2:]))).item()
+            elif isinstance(module, nn.Linear):
+                flops = (torch.prod(torch.LongTensor(list(output.size()))) \
+                         * input[0].size(1)).item()
+
+            if isinstance(input[0], list):
+                input = input[0]
+            if isinstance(output, list):
+                output = output[0]
+
+            summary.append(
+                ModuleDetails(
+                    name=layer_name,
+                    input_size=list(input[0].size()),
+                    output_size=list(output.size()),
+                    num_parameters=params,
+                    multiply_adds=flops)
+            )
+
+        if not isinstance(module, nn.ModuleList) \
+           and not isinstance(module, nn.Sequential) \
+           and module != model:
+            hooks.append(module.register_forward_hook(hook))
+
+    model.eval()
+    model.apply(add_hooks)
+
+    space_len = item_length
+
+    model(*input_tensors)
+    for hook in hooks:
+        hook.remove()
+
+    details = ''
+    if verbose:
+        details = "Model Summary" + \
+            os.linesep + \
+            "Name{}Input Size{}Output Size{}Parameters{}Multiply Adds (Flops){}".format(
+                ' ' * (space_len - len("Name")),
+                ' ' * (space_len - len("Input Size")),
+                ' ' * (space_len - len("Output Size")),
+                ' ' * (space_len - len("Parameters")),
+                ' ' * (space_len - len("Multiply Adds (Flops)"))) \
+                + os.linesep + '-' * space_len * 5 + os.linesep
+
+    params_sum = 0
+    flops_sum = 0
+    for layer in summary:
+        params_sum += layer.num_parameters
+        if layer.multiply_adds != "Not Available":
+            flops_sum += layer.multiply_adds
+        if verbose:
+            details += "{}{}{}{}{}{}{}{}{}{}".format(
+                layer.name,
+                ' ' * (space_len - len(layer.name)),
+                layer.input_size,
+                ' ' * (space_len - len(str(layer.input_size))),
+                layer.output_size,
+                ' ' * (space_len - len(str(layer.output_size))),
+                layer.num_parameters,
+                ' ' * (space_len - len(str(layer.num_parameters))),
+                layer.multiply_adds,
+                ' ' * (space_len - len(str(layer.multiply_adds)))) \
+                + os.linesep + '-' * space_len * 5 + os.linesep
+
+    details += os.linesep \
+        + "Total Parameters: {:,}".format(params_sum) \
+        + os.linesep + '-' * space_len * 5 + os.linesep
+    details += "Total Multiply Adds (For Convolution and Linear Layers only): {:,} GFLOPs".format(flops_sum/(1024**3)) \
+        + os.linesep + '-' * space_len * 5 + os.linesep
+    details += "Number of Layers" + os.linesep
+    for layer in layer_instances:
+        details += "{} : {} layers   ".format(layer, layer_instances[layer])
+
+    return details
+
+
