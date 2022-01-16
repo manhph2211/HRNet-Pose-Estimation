@@ -27,6 +27,7 @@ ${POSE_ROOT}
 ```
 
 ### Dependencies
+- Here are required packages:
 ```angular2html
 torch
 torchvision
@@ -34,6 +35,17 @@ numpy
 json_tricks
 yacs>=0.1.5
 Cython
+```
+- You also need to install [cocoapi](https://github.com/cocodataset/cocoapi):
+```
+git clone https://github.com/cocodataset/cocoapi.git
+cd cocoapi/PythonAPI
+# Install into global site-packages
+make install
+# Alternatively, if you do not have permissions or prefer
+# not to install the COCO API into global site-packages
+python3 setup.py install --user
+cd ..
 ```
 ## Usage 
 ```angular2html

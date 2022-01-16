@@ -63,16 +63,6 @@ def train(config, train_loader, model, criterion, optimizer, epoch, device='cpu'
                       data_time=data_time, loss=losses, acc=acc)
             logger.info(msg)
 
-            writer = writer_dict['writer']
-            global_steps = writer_dict['train_global_steps']
-            writer.add_scalar('train_loss', losses.val, global_steps)
-            writer.add_scalar('train_acc', acc.val, global_steps)
-            writer_dict['train_global_steps'] = global_steps + 1
-
-            # prefix = '{}_{}'.format(os.path.join(output_dir, 'train'), i)
-            # save_debug_images(config, input, meta, target, pred*4, output,
-            #                   prefix)
-
 
 def validate(config, val_loader, val_dataset, model, criterion, output_dir, device='cpu', writer_dict=None):
     batch_time = AverageMeter()

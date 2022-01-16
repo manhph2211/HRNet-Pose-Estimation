@@ -1,0 +1,6 @@
+torch
+torchvision
+numpy
+json_tricks
+yacs>=0.1.5
+Cython
