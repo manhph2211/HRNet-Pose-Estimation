@@ -2,9 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
+
 import os
-from cfg import _C as cfg
+from config import _C as cfg
 import torch
 import torch.optim
 import torch.utils.data
@@ -20,7 +20,7 @@ from model import get_pose_net
 
 def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = get_pose_net(cfg).to(device)
+    model = get_pose_net(cfg,is_train=True).to(device)
 
     criterion = JointsMSELoss(
         use_target_weight=cfg.LOSS.USE_TARGET_WEIGHT

@@ -1,4 +1,3 @@
-import os
 from yacs.config import CfgNode as CN
 
 
@@ -14,11 +13,6 @@ _C.AUTO_RESUME = False
 _C.PIN_MEMORY = True
 _C.RANK = 0
 
-# Cudnn related params
-_C.CUDNN = CN()
-_C.CUDNN.BENCHMARK = True
-_C.CUDNN.DETERMINISTIC = False
-_C.CUDNN.ENABLED = True
 
 # common params for NETWORK
 _C.MODEL = CN()
@@ -89,8 +83,8 @@ _C.TEST.BATCH_SIZE_PER_GPU = 32
 _C.TEST.FLIP_TEST = False
 _C.TEST.POST_PROCESS = False
 _C.TEST.SHIFT_HEATMAP = False
-
 _C.TEST.USE_GT_BBOX = False
+
 
 # nms
 _C.TEST.IMAGE_THRE = 0.1
@@ -101,44 +95,6 @@ _C.TEST.IN_VIS_THRE = 0.0
 _C.TEST.COCO_BBOX_FILE = ''
 _C.TEST.BBOX_THRE = 1.0
 _C.TEST.MODEL_FILE = ''
-
-# debug
-_C.DEBUG = CN()
-_C.DEBUG.DEBUG = False
-_C.DEBUG.SAVE_BATCH_IMAGES_GT = False
-_C.DEBUG.SAVE_BATCH_IMAGES_PRED = False
-_C.DEBUG.SAVE_HEATMAPS_GT = False
-_C.DEBUG.SAVE_HEATMAPS_PRED = False
-
-
-def update_config(cfg, args):
-    cfg.defrost()
-    cfg.merge_from_file(args.cfg)
-    cfg.merge_from_list(args.opts)
-
-    if args.modelDir:
-        cfg.OUTPUT_DIR = args.modelDir
-
-    if args.logDir:
-        cfg.LOG_DIR = args.logDir
-
-    if args.dataDir:
-        cfg.DATA_DIR = args.dataDir
-
-    cfg.DATASET.ROOT = os.path.join(
-        cfg.DATA_DIR, cfg.DATASET.ROOT
-    )
-
-    cfg.MODEL.PRETRAINED = os.path.join(
-        cfg.DATA_DIR, cfg.MODEL.PRETRAINED
-    )
-
-    if cfg.TEST.MODEL_FILE:
-        cfg.TEST.MODEL_FILE = os.path.join(
-            cfg.DATA_DIR, cfg.TEST.MODEL_FILE
-        )
-
-    cfg.freeze()
 
 
 if __name__ == '__main__':
