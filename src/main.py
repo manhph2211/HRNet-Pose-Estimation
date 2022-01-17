@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import os
 from config import _C as cfg
 import torch
@@ -12,8 +11,7 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 from loss import JointsMSELoss
 from engine import train, validate
-from utils import get_optimizer
-from utils import save_checkpoint
+from utils import get_optimizer, save_checkpoint
 from dataset import COCODataset
 from model import get_pose_net
 
@@ -82,8 +80,6 @@ def main():
     )
 
     for epoch in range(begin_epoch, cfg.TRAIN.END_EPOCH):
-
-
         # train for one epoch
         train(cfg, train_loader, model, criterion, optimizer,device='cpu', epoch=epoch)
         perf_indicator = validate(cfg, valid_loader, valid_dataset, model, criterion, output_dir='./weights', device=device)
