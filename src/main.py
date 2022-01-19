@@ -94,14 +94,14 @@ def main():
             'epoch': epoch + 1,
             'model': cfg.MODEL.NAME,
             'state_dict': model.state_dict(),
-            'best_state_dict': model.module.state_dict(),
+            'best_state_dict': model.state_dict(),
             'perf': perf_indicator,
             'optimizer': optimizer.state_dict(),
         }, best_model, './weights')
         lr_scheduler.step()
 
     final_model_state_file = './weights/final_ckp.pth'
-    torch.save(model.module.state_dict(), final_model_state_file)
+    torch.save(model.state_dict(), final_model_state_file)
 
 
 if __name__ == '__main__':
