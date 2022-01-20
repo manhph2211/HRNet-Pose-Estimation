@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from evaluate import accuracy, get_final_preds
 from transforms import flip_back
+from vis import *
 logger = logging.getLogger(__name__)
 
 
@@ -62,6 +63,10 @@ def train(config, train_loader, model, criterion, optimizer, epoch, device='cpu'
                       speed=input.size(0)/batch_time.val,
                       data_time=data_time, loss=losses, acc=acc)
             logger.info(msg)
+            print(msg)
+            prefix = '{}_{}'.format(os.path.join(output_dir, 'train'), i)
+            save_batch_image_with_joints(input, pred * 4, meta['joints_vis'],'{}_pred.jpg'.format(prefix))
+        break
 
 
 def validate(config, val_loader, val_dataset, model, criterion, output_dir, device='cpu', writer_dict=None):
@@ -158,6 +163,10 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir, devi
                           i, len(val_loader), batch_time=batch_time,
                           loss=losses, acc=acc)
                 logger.info(msg)
+                prefix = '{}_{}'.format(
+                    os.path.join(output_dir, 'val'), i
+                )
+                save_batch_image_with_joints(input, pred * 4, meta['joints_vis'],'{}_pred.jpg'.format(prefix))
         name_values, perf_indicator = val_dataset.evaluate(
             config, all_preds, output_dir, all_boxes, image_path,
             filenames, imgnums
