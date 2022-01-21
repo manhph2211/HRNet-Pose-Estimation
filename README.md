@@ -4,6 +4,7 @@ Pose-Estimation
 - This repo is a sub-task of the smart hospital bed project which is about implementing the task of pose estimation :smile: Many thanks to the main authors of [hrnet-human-pose-estimation project](https://github.com/HRNet/HRNet-Human-Pose-Estimation) - the project I'd mainly based on.
 
 - [Hrnet](https://arxiv.org/pdf/1902.09212.pdf) wants to maintain reliable high-resolution representations of images through the entire training process, besides fusioning different high-to-low sub-networks, which is special contribution of the paper. 
+![image](https://user-images.githubusercontent.com/61444616/150523678-45585974-a960-474f-8166-ffb51009f38b.png)
 
 - There are two stages here. First, you need to use a object detection algorithm to get bounding box of person in image. The each predicted person region will be cut from original image and then fed into hrnet-pose-estimation for our main purpose!
 
@@ -41,6 +42,7 @@ ${POSE_ROOT}
 ```angular2html
 torch
 torchvision
+opencv-python
 numpy
 json_tricks
 yacs>=0.1.5
@@ -62,6 +64,7 @@ cd ..
 git clone https://github.com/ultralytics/yolov5  # clone
 cd yolov5
 pip install -r requirements.txt  # install
+
 ``` 
 
 # Usage 
