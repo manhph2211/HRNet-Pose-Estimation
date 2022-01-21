@@ -1,8 +1,17 @@
-# Pose-Estimation
-This repo is a sub-task of the smart hospital bed project which is about implementing the task of pose estimation :smile: Many thanks to the main authors of [hrnet-human-pose-estimation project](https://github.com/HRNet/HRNet-Human-Pose-Estimation) - the project I'd mainly based on.
-## Setup
-### Data preparation
-- I used coco dataset(2017) which can be downloaded [here](https://cocodataset.org/#download), and the format is just like this:
+Pose-Estimation
+=====
+
+- This repo is a sub-task of the smart hospital bed project which is about implementing the task of pose estimation :smile: Many thanks to the main authors of [hrnet-human-pose-estimation project](https://github.com/HRNet/HRNet-Human-Pose-Estimation) - the project I'd mainly based on.
+
+- [Hrnet](https://arxiv.org/pdf/1902.09212.pdf) wants to maintain reliable high-resolution representations of images through the entire training process, besides fusioning different high-to-low sub-networks, which is special contribution of the paper. 
+
+- There are two stages here. First, you need to use a object detection algorithm to get bounding box of person in image. The each predicted person region will be cut from original image and then fed into hrnet-pose-estimation for our main purpose!
+
+- Here `coco` format was used. When you are labeling, you might wanna label box of person and keypoints of that person!
+
+# Setup
+## Data preparation
+- Coco dataset(2017) which can be downloaded [here](https://cocodataset.org/#download), and the format is just like this:
 ```
 ${POSE_ROOT}
 |-- data
@@ -25,8 +34,9 @@ ${POSE_ROOT}
                 |-- 000000000632.jpg
                 |-- ... 
 ```
+- Note that `person_detection_results` contains json results of particular perseon detector. It's not really necessary when dealing with COCO datasets because they provide it already, but when it comes to your custom dataset, you should consider to train and get predicted bboxes for person in images, and the save it in `person_detection_results` as json format before coming to pose estimation stage!
 
-### Dependencies
+## Dependencies
 - Here are required packages:
 ```angular2html
 torch
@@ -47,13 +57,23 @@ make install
 python3 setup.py install --user
 cd ..
 ```
-## Usage 
+- For object detector, I would like to use `yolov5`, you can go to the [official implementation](https://github.com/ultralytics/yolov5) for installation. Or you can follow:
+```
+git clone https://github.com/ultralytics/yolov5  # clone
+cd yolov5
+pip install -r requirements.txt  # install
+``` 
+
+# Usage 
+
+- Following these:
 ```angular2html
 pip install -r requirements.txt
 cd src
 python3 main.py # update later
 ```
-## Citation
+
+# Citation
 ```
 @inproceedings{sun2019deep,
   title={Deep High-Resolution Representation Learning for Human Pose Estimation},
