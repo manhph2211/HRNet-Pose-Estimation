@@ -5,7 +5,7 @@ Pose-Estimation
 
 - [Hrnet](https://arxiv.org/pdf/1902.09212.pdf) wants to maintain reliable high-resolution representations of images through the entire training process, besides fusioning different high-to-low sub-networks, which is special contribution of the paper. 
 
-![image](https://user-images.githubusercontent.com/61444616/150523678-45585974-a960-474f-8166-ffb51009f38b.png)
+![image](https://user-images.githubusercontent.com/61444616/150524052-b51b99c3-52ee-44ba-ab8f-a8ef1f5a66ec.png)
 
 - There are two stages here. First, you need to use a object detection algorithm to get bounding box of person in image. The each predicted person region will be cut from original image and then fed into hrnet-pose-estimation for our main purpose!
 
