@@ -35,8 +35,8 @@ def format(annotation_file="./annotations/in_images.json",image_folder="./images
         os.mkdir('./images/train2017')
     if not os.path.isdir('./images/val2017'):
         os.mkdir('./images/val2017')
-
-    for i,image in tqdm(enumerate(full_data['images'])):
+    print(f"-------- STARTING CONVERTING {len(full_data['images'])} images-------")
+    for i,image in enumerate(full_data['images']):
         id_image = image['id']
         file_name = image['file_name']
         for anno in full_data['annotations']:
@@ -51,8 +51,8 @@ def format(annotation_file="./annotations/in_images.json",image_folder="./images
                 else:
                     train_dict['images'].append(image)
                     train_dict['annotations'].append(anno)
-                    copyfile(os.path.join(image_folder,file_name),os.path.join('./images/train2017',file_name))
-                break # NOT SURE
+                    copyfile(os.path.join(image_folder,file_name),os.path.join('./images/train2017',file_name))                    
+
     write_json('./annotations/person_keypoints_train2017.json',train_dict)
     write_json('./annotations/person_keypoints_val2017.json', val_dict)
     write_json('./person_detection_results/COCO_val2017_detections_AP_H_56_person.json', new_person_detection_results)
@@ -61,5 +61,13 @@ def format(annotation_file="./annotations/in_images.json",image_folder="./images
 if __name__ =="__main__":
     print("CONVERTING...")
     format()
+    import glob 
 
+    train_path = './images/train2017'
+    val_path = './images/val2017'
 
+    train_images = glob.glob(train_path + '/*')
+    val_images = glob.glob(val_path + '/*')
+
+    print("Train images: ", len(list(train_images)))
+    print("Val images: ", len(list(val_images)))
